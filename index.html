@@ -1,0 +1,491 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulateur PER ou assurance vie</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&display=swap">
+<style>
+/* Charte « Conseil patrimonial » : une colonne de 1120px sur grille 12 col., papier pour l'ingénierie, encre pour l'ouverture. Cobalt seul accent. */
+:root{
+  --paper:#f7f8fa; --paper-muted:#eceff3; --ink:#0a0f1a; --ink-muted:#4a5260; --ink-subtle:#5e6673;
+  --rule:#dde1e7; --rule-strong:#0a0f1a; --cobalt:#0057ff; --cobalt-texte:#0057ff; --on-cobalt:#ffffff;
+  --cobalt-wash:#e6eeff; --gris-1:#2e3642; --gris-2:#7d8594; --gris-3:#cbd0d9;
+  /* bande d'ouverture : toujours en thème Encre */
+  --e-paper:#0a0f1a; --e-ink:#f7f8fa; --e-muted:#b4bac5; --e-rule:#232b3a;
+  --sans:"Archivo","Helvetica Neue",Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0a0f1a; --paper-muted:#141b29; --ink:#f7f8fa; --ink-muted:#b4bac5; --ink-subtle:#8c94a1;
+  --rule:#232b3a; --rule-strong:#f7f8fa; --cobalt-texte:#5c8dff; --cobalt-wash:#0f1f45;
+  --gris-1:#a7aeba; --gris-2:#6b7383; --gris-3:#3a4252; --e-paper:#141b29; --e-rule:#2c3546; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0a0f1a; --paper-muted:#141b29; --ink:#f7f8fa; --ink-muted:#b4bac5; --ink-subtle:#8c94a1;
+  --rule:#232b3a; --rule-strong:#f7f8fa; --cobalt-texte:#5c8dff; --cobalt-wash:#0f1f45;
+  --gris-1:#a7aeba; --gris-2:#6b7383; --gris-3:#3a4252; --e-paper:#141b29; --e-rule:#2c3546; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:16px;line-height:24px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.num{font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0;text-wrap:balance}
+
+/* Ouverture */
+.ouverture{background:var(--e-paper);color:var(--e-ink);overflow:hidden;position:relative}
+.ouverture .wrap{padding-block:56px 48px;position:relative;display:grid;gap:18px}
+.disque{position:absolute;width:420px;height:420px;border-radius:50%;background:var(--cobalt);right:-90px;top:-120px;pointer-events:none}
+.ouverture .wrap>*{position:relative;max-width:720px}
+.kicker{font-size:14px;line-height:18px;font-weight:600;color:var(--e-muted)}
+.ouverture h1{font-size:clamp(46px,8vw,92px);line-height:.9;font-weight:800;font-stretch:64%;letter-spacing:-.015em}
+.ouverture p{margin:0;font-size:19px;line-height:28px;font-weight:450;color:var(--e-muted);max-width:60ch}
+
+/* Sections */
+section.bloc{padding-block:48px;border-top:1px solid var(--rule)}
+.titre-slide{font-size:clamp(32px,4.4vw,48px);line-height:1;font-weight:750;font-stretch:68%;letter-spacing:-.012em}
+.sous-titre{margin:10px 0 0;font-size:19px;line-height:27px;font-weight:450;color:var(--ink-muted);max-width:64ch}
+.libelle{font-size:14px;line-height:18px;font-weight:600;color:var(--ink-muted)}
+.legende{font-size:12px;line-height:17px;color:var(--ink-subtle)}
+.titre-bloc{font-size:24px;line-height:28px;font-weight:600;font-stretch:75%}
+
+/* Réglages */
+.reglages{margin-top:36px;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:28px 32px}
+.champ{grid-column:span 4;display:grid;gap:10px;align-content:start;min-width:0}
+.champ.large{grid-column:span 6}
+.champ-tete{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-top:1px solid var(--rule-strong);padding-top:10px}
+.champ-tete output{font-size:26px;line-height:30px;font-weight:300;font-stretch:72%;letter-spacing:-.01em}
+.seg{display:flex;border:1px solid var(--rule-strong)}
+.seg button{flex:1;min-width:0;appearance:none;background:transparent;color:var(--ink);border:0;border-left:1px solid var(--rule);font:600 15px/1 var(--sans);padding:12px 4px;cursor:pointer;font-variant-numeric:tabular-nums}
+.seg button:first-child{border-left:0}
+.seg button:hover{background:var(--paper-muted)}
+.seg button[aria-pressed="true"]{background:var(--cobalt);color:var(--on-cobalt)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--cobalt-texte);outline-offset:2px}
+input[type=range]{width:100%;accent-color:var(--cobalt);margin:6px 0}
+.montant{display:flex;align-items:center;border:1px solid var(--rule-strong);background:var(--paper)}
+.montant input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:300 26px/30px var(--sans);font-stretch:72%;padding:8px 10px;font-variant-numeric:tabular-nums}
+.montant span{padding:0 12px;color:var(--ink-muted);font-weight:600}
+.aide{font-size:13px;line-height:18px;color:var(--ink-subtle)}
+.puce-calc{display:inline-flex;gap:8px;align-items:center;font-size:13px;line-height:18px;font-weight:600;color:var(--cobalt-texte)}
+.puce-calc button{appearance:none;border:0;background:none;color:var(--ink-muted);text-decoration:underline;font:inherit;cursor:pointer;padding:0}
+
+/* Comparaison */
+.compare{margin-top:40px;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr);border-top:1px solid var(--rule-strong)}
+.compare>div{padding:12px 14px;border-bottom:1px solid var(--rule);min-width:0}
+.compare .tete{font-size:16px;font-weight:700;padding-block:14px}
+.compare .lig{color:var(--ink-muted);font-size:14px;line-height:19px;font-weight:600;padding-left:0}
+.compare .v{font-size:26px;line-height:30px;font-weight:300;font-stretch:72%;font-variant-numeric:tabular-nums}
+.compare .d{display:block;font-size:12px;line-height:17px;color:var(--ink-subtle);margin-top:2px;font-stretch:100%;font-weight:400}
+.compare .per{background:var(--cobalt-wash)}
+.compare .total>div,.compare .total{font-weight:600}
+.compare .final{border-bottom:1px solid var(--rule-strong)}
+.compare .final .v{font-weight:500}
+
+.verdict{margin-top:36px;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:32px 44px;align-items:end}
+.chiffre-cle{border-top:1px solid var(--rule-strong);padding-top:10px;display:grid;gap:6px}
+.chiffre-xl{font-size:clamp(56px,9vw,88px);line-height:.9;font-weight:300;font-stretch:72%;letter-spacing:-.02em;color:var(--cobalt-texte);font-variant-numeric:tabular-nums}
+.chiffre-xl.neutre{color:var(--ink)}
+.barres{display:grid;gap:14px}
+.barre{display:grid;grid-template-columns:120px minmax(0,1fr);gap:12px;align-items:center}
+.barre .piste{position:relative;height:34px;background:var(--paper-muted)}
+.barre .rempli{position:absolute;inset:0 auto 0 0;display:flex;align-items:center;justify-content:flex-end;padding-right:8px;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;transition:width .35s ease;white-space:nowrap}
+.barre.av .rempli{background:var(--gris-1);color:var(--paper)}
+.barre.per .rempli{background:var(--cobalt);color:var(--on-cobalt)}
+.seuil{margin-top:28px;background:var(--paper-muted);padding:18px 20px;display:grid;gap:4px}
+.seuil strong{font-size:21px;line-height:28px;font-weight:600}
+
+/* Matrice */
+.mat-scroll{overflow-x:auto;margin-top:32px}
+table.mat{border-collapse:collapse;width:100%;min-width:560px;font-variant-numeric:tabular-nums}
+.mat th,.mat td{padding:12px 8px;text-align:center;border-bottom:1px solid var(--rule)}
+.mat thead th{border-bottom:1px solid var(--rule-strong);font-size:15px;font-weight:600}
+.mat thead tr:first-child th{border-bottom:0;font-size:14px;color:var(--ink-muted);text-align:center}
+.mat tbody th{text-align:left;font-weight:600;font-size:15px;white-space:nowrap}
+.mat td{font-size:22px;line-height:26px;font-weight:300;font-stretch:72%}
+.mat td.au-dessus{color:var(--ink-subtle)}
+.mat td.perte{color:var(--ink);font-weight:500}
+.mat td.choisi{background:var(--cobalt);color:var(--on-cobalt);font-weight:500}
+.mat td button{all:unset;cursor:pointer;display:block;width:100%}
+.mat td:hover:not(.choisi){background:var(--paper-muted)}
+.lecture{margin-top:16px;display:flex;flex-wrap:wrap;gap:8px 24px}
+.lecture span{display:inline-flex;gap:8px;align-items:center}
+.pastille{width:12px;height:12px;border-radius:50%;display:inline-block}
+
+/* Retraite */
+.retraite{margin-top:36px;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:36px 44px}
+.retraite .reglages{margin-top:0;grid-template-columns:1fr;gap:24px}
+.retraite .champ{grid-column:auto}
+.scenarios{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 32px}
+.scen{border-top:1px solid var(--rule-strong);padding-top:10px;display:grid;gap:14px;align-content:start}
+.scen dl{margin:0;display:grid;gap:12px}
+.scen dt{font-size:14px;line-height:18px;font-weight:600;color:var(--ink-muted)}
+.scen dd{margin:2px 0 0;font-size:26px;line-height:30px;font-weight:300;font-stretch:72%;font-variant-numeric:tabular-nums}
+.scen.mieux dd.cle{color:var(--cobalt-texte);font-weight:400}
+.btn{appearance:none;border:1px solid var(--rule-strong);background:transparent;color:var(--ink);font:600 15px/1 var(--sans);padding:12px 16px;cursor:pointer;justify-self:start}
+.btn:hover{background:var(--ink);color:var(--paper)}
+.tranches{margin-top:24px}
+.tranches .piste{position:relative;height:28px;display:flex}
+.tranches .t{height:100%;border-right:1px solid var(--paper);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--ink)}
+.tranches .t:nth-child(1){background:var(--paper-muted)}
+.tranches .t:nth-child(2){background:var(--gris-3)}
+.tranches .t:nth-child(3){background:var(--gris-2);color:var(--paper)}
+.tranches .t:nth-child(4){background:var(--gris-1);color:var(--paper)}
+.tranches .t:nth-child(5){background:var(--ink);color:var(--paper)}
+.repere{position:absolute;top:-6px;bottom:-6px;width:3px;background:var(--cobalt);transition:left .3s}
+.repere.b{background:var(--cobalt);opacity:.45}
+.tranches .axe{position:relative;height:18px;margin-top:6px}
+.tranches .axe span{position:absolute;top:0;transform:translateX(-50%);white-space:nowrap}
+.tranches .axe span:first-child{transform:none}
+.tranches .axe span:last-child{transform:translateX(-100%)}
+
+.points{margin-top:32px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px 44px}
+.points div{border-top:1px solid var(--rule-strong);padding-top:10px;display:grid;gap:6px;min-width:0}
+.points p{margin:0;color:var(--ink-muted)}
+footer{padding-block:28px 48px;border-top:1px solid var(--rule)}
+footer p{margin:0 0 6px;max-width:110ch}
+
+@media (max-width:860px){
+  .champ,.champ.large{grid-column:span 12}
+  .verdict,.retraite{grid-template-columns:1fr}
+  .points{grid-template-columns:1fr}
+  .disque{width:260px;height:260px;right:-80px;top:-90px}
+}
+@media (max-width:520px){
+  .compare .v{font-size:21px;line-height:25px}
+  .compare>div{padding:10px 8px}
+  .scenarios{grid-template-columns:1fr;gap:24px}
+  .barre{grid-template-columns:84px minmax(0,1fr)}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body style="margin:0">
+
+<header class="ouverture">
+  <div class="disque" aria-hidden="true"></div>
+  <div class="wrap">
+    <div class="kicker">Simulateur · épargne retraite</div>
+    <h1>PER ou assurance vie, à effort d'épargne égal</h1>
+    <p>La déduction des versements PER agit comme une avance de trésorerie de l'État, remboursée à la sortie par l'impôt sur le revenu. Ce simulateur mesure ce qu'il reste au final, selon votre taux marginal aujourd'hui et à la retraite.</p>
+  </div>
+</header>
+
+<main>
+  <!-- 1. Réglages + comparaison -->
+  <section class="bloc" style="border-top:0">
+    <div class="wrap">
+      <h2 class="titre-slide">Votre situation</h2>
+      <p class="sous-titre">L'effort d'épargne est ce qui sort réellement de votre poche. Sur le PER, l'économie d'impôt est réinvestie avec lui.</p>
+
+      <div class="reglages">
+        <div class="champ">
+          <div class="champ-tete"><label class="libelle" for="effort">Effort d'épargne</label></div>
+          <div class="montant"><input id="effort" type="text" inputmode="numeric" value="5 900" aria-describedby="effort-aide"><span>€</span></div>
+          <div class="aide" id="effort-aide">Versement unique, net d'économie d'impôt.</div>
+        </div>
+        <div class="champ">
+          <div class="champ-tete"><label class="libelle" for="rdt">Rendement annuel</label><output id="rdt-o" class="num">2,0 %</output></div>
+          <input id="rdt" type="range" min="0" max="7" step="0.5" value="2">
+          <div class="aide">Identique sur les deux enveloppes, net de frais.</div>
+        </div>
+        <div class="champ">
+          <div class="champ-tete"><label class="libelle" for="duree">Années jusqu'à la retraite</label><output id="duree-o" class="num">10 ans</output></div>
+          <input id="duree" type="range" min="1" max="35" step="1" value="10">
+          <div class="aide">Le PER est bloqué jusqu'à la retraite, sauf cas de déblocage anticipé.</div>
+        </div>
+        <div class="champ large">
+          <div class="champ-tete"><span class="libelle" id="tmiE-l">TMI aujourd'hui (à l'entrée)</span></div>
+          <div class="seg" role="group" aria-labelledby="tmiE-l" id="tmiE"></div>
+        </div>
+        <div class="champ large">
+          <div class="champ-tete"><span class="libelle" id="tmiS-l">TMI à la retraite (à la sortie)</span><span class="puce-calc" id="tmiS-calc" hidden></span></div>
+          <div class="seg" role="group" aria-labelledby="tmiS-l" id="tmiS"></div>
+        </div>
+        <div class="champ">
+          <div class="champ-tete"><span class="libelle" id="foyer-l">Abattement assurance vie</span></div>
+          <div class="seg" role="group" aria-labelledby="foyer-l" id="foyer"></div>
+          <div class="aide">4 600 € de gains exonérés d'impôt par an après 8 ans, 9 200 € pour un couple.</div>
+        </div>
+      </div>
+
+      <div class="compare" role="table" aria-label="Comparaison assurance vie et PER">
+        <div class="tete lig" role="columnheader"></div>
+        <div class="tete" role="columnheader">Assurance vie</div>
+        <div class="tete per" role="columnheader">PER, sortie en capital</div>
+
+        <div class="lig">Effort d'épargne</div>
+        <div class="v" id="c-av-eff"></div>
+        <div class="v per" id="c-per-eff"></div>
+
+        <div class="lig">Montant investi</div>
+        <div class="v" id="c-av-inv"></div>
+        <div class="v per" id="c-per-inv"></div>
+
+        <div class="lig" id="c-lig-brut">Valeur brute</div>
+        <div class="v" id="c-av-brut"></div>
+        <div class="v per" id="c-per-brut"></div>
+
+        <div class="lig">Fiscalité du retrait</div>
+        <div class="v" id="c-av-fisc"></div>
+        <div class="v per" id="c-per-fisc"></div>
+
+        <div class="lig final">Valeur nette</div>
+        <div class="v final" id="c-av-net"></div>
+        <div class="v per final" id="c-per-net"></div>
+      </div>
+
+      <div class="verdict">
+        <div class="chiffre-cle">
+          <span class="libelle">Écart de valeur nette en faveur du PER</span>
+          <span class="chiffre-xl" id="ecart"></span>
+          <span class="aide" id="ecart-eur"></span>
+        </div>
+        <div class="barres" aria-hidden="true">
+          <div class="barre av"><span class="libelle">Assurance vie</span><div class="piste"><div class="rempli" id="b-av"></div></div></div>
+          <div class="barre per"><span class="libelle">PER</span><div class="piste"><div class="rempli" id="b-per"></div></div></div>
+        </div>
+      </div>
+
+      <div class="seuil">
+        <span class="libelle">Seuil de bascule</span>
+        <strong id="seuil"></strong>
+        <span class="aide" id="seuil-aide"></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Matrice -->
+  <section class="bloc">
+    <div class="wrap">
+      <h2 class="titre-slide">Même TMI ou TMI plus basse : l'écart selon les deux taux</h2>
+      <p class="sous-titre">Calculé avec votre effort, votre rendement et votre durée. Cliquez sur une case pour l'appliquer à la comparaison.</p>
+      <div class="mat-scroll">
+        <table class="mat" id="mat">
+          <thead>
+            <tr><th></th><th colspan="5">TMI à la sortie</th></tr>
+            <tr id="mat-tete"><th style="text-align:left">TMI à l'entrée</th></tr>
+          </thead>
+          <tbody id="mat-corps"></tbody>
+        </table>
+      </div>
+      <div class="lecture legende">
+        <span><i class="pastille" style="background:var(--cobalt)"></i>Votre situation</span>
+        <span>Chiffres en gris : TMI plus élevée à la sortie qu'à l'entrée, le cas à surveiller</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. TMI à la retraite -->
+  <section class="bloc">
+    <div class="wrap">
+      <h2 class="titre-slide">Quid de ma TMI à la retraite, une fois le capital ajouté ?</h2>
+      <p class="sous-titre">La part « versements » du capital PER s'ajoute à vos revenus de l'année du retrait. Retiré d'un coup, il peut vous faire changer de tranche ; fractionné, il reste souvent dans la vôtre.</p>
+
+      <div class="retraite">
+        <div class="reglages">
+          <div class="champ">
+            <div class="champ-tete"><label class="libelle" for="rev">Revenu imposable annuel à la retraite</label></div>
+            <div class="montant"><input id="rev" type="text" inputmode="numeric" value="26 000"><span>€</span></div>
+            <div class="aide">Pensions après abattement de 10 %, revenus fonciers, etc.</div>
+          </div>
+          <div class="champ">
+            <div class="champ-tete"><span class="libelle" id="parts-l">Parts de quotient familial</span></div>
+            <div class="seg" role="group" aria-labelledby="parts-l" id="parts"></div>
+          </div>
+          <div class="champ">
+            <div class="champ-tete"><label class="libelle" for="frac">Retrait fractionné sur</label><output id="frac-o" class="num">4 ans</output></div>
+            <input id="frac" type="range" min="2" max="10" step="1" value="4">
+          </div>
+        </div>
+
+        <div style="display:grid;gap:22px;min-width:0">
+          <div>
+            <span class="libelle">Votre TMI à la retraite sans le PER : </span><strong id="tmi-base" class="num"></strong>
+            <div class="tranches" aria-hidden="true">
+              <div class="piste" id="tr-piste"></div>
+              <div class="axe legende num" id="tr-axe"></div>
+              <div class="lecture legende"><span><i class="pastille" style="background:var(--cobalt)"></i>Revenu sans le PER</span><span><i class="pastille" style="background:var(--cobalt);opacity:.45"></i>Avec le capital retiré en une fois</span><span>Revenu par part</span></div>
+            </div>
+          </div>
+          <div class="scenarios">
+            <div class="scen" id="scen-1">
+              <span class="titre-bloc">Retrait en une fois</span>
+              <dl>
+                <div><dt>Revenu de l'année, par part</dt><dd id="s1-rev"></dd></div>
+                <div><dt>TMI atteinte</dt><dd id="s1-tmi"></dd></div>
+                <div><dt>Impôt dû sur la part versements</dt><dd id="s1-imp"></dd></div>
+                <div><dt>Taux moyen sur cette part</dt><dd class="cle" id="s1-taux"></dd></div>
+              </dl>
+              <button class="btn" id="s1-app" type="button">Utiliser ce taux</button>
+            </div>
+            <div class="scen" id="scen-2">
+              <span class="titre-bloc" id="s2-titre">Retrait sur 4 ans</span>
+              <dl>
+                <div><dt>Revenu de chaque année, par part</dt><dd id="s2-rev"></dd></div>
+                <div><dt>TMI atteinte</dt><dd id="s2-tmi"></dd></div>
+                <div><dt>Impôt dû sur la part versements</dt><dd id="s2-imp"></dd></div>
+                <div><dt>Taux moyen sur cette part</dt><dd class="cle" id="s2-taux"></dd></div>
+              </dl>
+              <button class="btn" id="s2-app" type="button">Utiliser ce taux</button>
+            </div>
+          </div>
+          <p class="legende" style="margin:0" id="ret-note"></p>
+        </div>
+      </div>
+
+      <div class="points">
+        <div><span class="titre-bloc">La TMI baisse souvent</span><p>La pension représente en moyenne 60 à 75 % du dernier revenu d'activité. Un foyer à 41 % en activité passe fréquemment à 30 % ou 11 %.</p></div>
+        <div><span class="titre-bloc">Le taux moyen compte</span><p>Seule la partie du revenu au-dessus du seuil est taxée à la TMI. Le taux réellement payé sur le capital est souvent inférieur à la TMI affichée.</p></div>
+        <div><span class="titre-bloc">Garder les deux</span><p>L'assurance vie reste disponible à tout moment et se transmet hors succession. Le PER se réserve à l'épargne vraiment destinée à la retraite.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="legende">Hypothèses : versement unique, rendement constant identique sur les deux enveloppes, sortie du PER en capital (versements déduits). Barème 2026 de l'impôt sur le revenu (revenus 2025, par part : 0 % jusqu'à 11 600 €, 11 % jusqu'à 29 579 €, 30 % jusqu'à 84 577 €, 41 % jusqu'à 181 917 €, 45 % au-delà).</p>
+    <p class="legende">PER : versements imposés au barème, gains au prélèvement forfaitaire de 31,4 % (12,8 % + 18,6 % de prélèvements sociaux). Assurance vie : avant 8 ans, gains à 30 % (12,8 % + 17,2 %) ; après 8 ans, 17,2 % de prélèvements sociaux, puis 7,5 % d'impôt au-delà de l'abattement (versements inférieurs à 150 000 €), abattement supposé disponible en totalité.</p>
+    <p class="legende">Non pris en compte : plafond de déduction PER, sortie en rente, décote et plafonnement du quotient familial, frais propres à chaque contrat. Simulation pédagogique, sans valeur de conseil personnalisé.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var TMI=[0,0.11,0.30,0.41,0.45];
+  var BAREME=[[0,11600,0],[11600,29579,0.11],[29579,84577,0.30],[84577,181917,0.41],[181917,Infinity,0.45]];
+  var PFU_PER=0.314, PS_AV=0.172, PFU_AV=0.30, IR_AV8=0.075;
+  var st={effort:5900,r:0.02,n:10,tE:0.41,tS:0.30,tSCustom:null,couple:false,rev:26000,parts:1,frac:4};
+  try{var s=JSON.parse(localStorage.getItem('sim-per')||'null'); if(s) Object.assign(st,s,{tSCustom:null});}catch(e){}
+
+  var fmtE=new Intl.NumberFormat('fr-FR',{maximumFractionDigits:0});
+  function eur(x){var s=fmtE.format(Math.round(Math.abs(x)))+' €';return (Math.round(x)<0?'−':'')+s;}
+  function pct(x,d){d=d==null?0:d;var v=(x*100);var s=Math.abs(v).toFixed(d).replace('.',',');return s+' %';}
+  function signPct(x){var v=Math.round(x*100);return (v>0?'+ ':v<0?'− ':'')+Math.abs(v)+' %';}
+  function $(id){return document.getElementById(id);}
+  function parseNum(v){var n=parseFloat(String(v).replace(/[^\d,.]/g,'').replace(',','.'));return isFinite(n)?n:0;}
+
+  function calc(effort,tE,tS,r,n,couple){
+    var g=Math.pow(1+r,n);
+    var V=effort/(1-tE);
+    var perBrut=V*g, perGain=perBrut-V;
+    var perIR=V*tS, perPFU=perGain*PFU_PER;
+    var perNet=perBrut-perIR-perPFU;
+    var avBrut=effort*g, avGain=avBrut-effort, avTax;
+    if(n<8){avTax=avGain*PFU_AV;}
+    else{var ab=couple?9200:4600;avTax=avGain*PS_AV+Math.max(0,avGain-ab)*IR_AV8;}
+    var avNet=avBrut-avTax;
+    var seuil=(perBrut-perPFU-avNet)/V;
+    return {V:V,perBrut:perBrut,perGain:perGain,perIR:perIR,perPFU:perPFU,perNet:perNet,avBrut:avBrut,avGain:avGain,avTax:avTax,avNet:avNet,ecart:perNet/avNet-1,seuil:seuil};
+  }
+  function impot(R,parts){var q=R/parts,t=0;BAREME.forEach(function(b){if(q>b[0])t+=(Math.min(q,b[1])-b[0])*b[2];});return t*parts;}
+  function tmiDe(R,parts){var q=R/parts,t=0;BAREME.forEach(function(b){if(q>b[0])t=b[2];});return t;}
+
+  function seg(id,vals,label,get,set){
+    var el=$(id);el.innerHTML='';
+    vals.forEach(function(v,i){var b=document.createElement('button');b.type='button';b.id=id+'-'+i;b.textContent=label(v);
+      b.addEventListener('click',function(){set(v);render();});el.appendChild(b);});
+    el._upd=function(){Array.prototype.forEach.call(el.children,function(b,i){b.setAttribute('aria-pressed',String(get()===vals[i]));});};
+  }
+  var tmiLbl=function(v){return Math.round(v*100)+' %';};
+  seg('tmiE',TMI,tmiLbl,function(){return st.tE;},function(v){st.tE=v;});
+  seg('tmiS',TMI,tmiLbl,function(){return st.tSCustom==null?st.tS:null;},function(v){st.tS=v;st.tSCustom=null;});
+  seg('foyer',[false,true],function(v){return v?'Couple':'Personne seule';},function(){return st.couple;},function(v){st.couple=v;});
+  seg('parts',[1,1.5,2,2.5,3],function(v){return String(v).replace('.',',');},function(){return st.parts;},function(v){st.parts=v;});
+
+  var rdt=$('rdt'),duree=$('duree'),frac=$('frac'),effort=$('effort'),rev=$('rev');
+  rdt.value=st.r*100;duree.value=st.n;frac.value=st.frac;effort.value=fmtE.format(st.effort);rev.value=fmtE.format(st.rev);
+  rdt.addEventListener('input',function(){st.r=+rdt.value/100;render();});
+  duree.addEventListener('input',function(){st.n=+duree.value;render();});
+  frac.addEventListener('input',function(){st.frac=+frac.value;render();});
+  effort.addEventListener('input',function(){st.effort=Math.max(0,parseNum(effort.value));render();});
+  effort.addEventListener('blur',function(){effort.value=fmtE.format(st.effort);});
+  rev.addEventListener('input',function(){st.rev=Math.max(0,parseNum(rev.value));render();});
+  rev.addEventListener('blur',function(){rev.value=fmtE.format(st.rev);});
+
+  // Matrice
+  var ENT=[0.45,0.41,0.30,0.11], SOR=[0.45,0.41,0.30,0.11,0];
+  var tete=$('mat-tete');SOR.forEach(function(s){var th=document.createElement('th');th.textContent=tmiLbl(s);tete.appendChild(th);});
+  var corps=$('mat-corps');
+  ENT.forEach(function(e,i){var tr=document.createElement('tr');var th=document.createElement('th');th.textContent=tmiLbl(e);tr.appendChild(th);
+    SOR.forEach(function(s,j){var td=document.createElement('td');td.id='m-'+i+'-'+j;var b=document.createElement('button');b.type='button';
+      b.addEventListener('click',function(){st.tE=e;st.tS=s;st.tSCustom=null;render();});td.appendChild(b);tr.appendChild(td);});
+    corps.appendChild(tr);});
+
+  $('s1-app').addEventListener('click',function(){st.tSCustom=st._t1;render();});
+  $('s2-app').addEventListener('click',function(){st.tSCustom=st._t2;render();});
+
+  function render(){
+    var tS=st.tSCustom!=null?st.tSCustom:st.tS;
+    var c=calc(st.effort,st.tE,tS,st.r,st.n,st.couple);
+    $('rdt-o').textContent=pct(st.r,1);
+    $('duree-o').textContent=st.n+(st.n>1?' ans':' an');
+    $('frac-o').textContent=st.frac+' ans';
+    ['tmiE','tmiS','foyer','parts'].forEach(function(id){$(id)._upd();});
+    var calcEl=$('tmiS-calc');
+    if(st.tSCustom!=null){calcEl.hidden=false;calcEl.innerHTML='Taux calculé : '+pct(st.tSCustom,1)+' <button type="button" id="raz">retirer</button>';
+      $('raz').onclick=function(){st.tSCustom=null;render();};}
+    else calcEl.hidden=true;
+
+    $('c-lig-brut').textContent='Valeur brute après '+st.n+(st.n>1?' ans':' an');
+    $('c-av-eff').textContent=eur(st.effort);
+    $('c-per-eff').textContent=eur(st.effort);
+    $('c-av-inv').innerHTML=eur(st.effort)+'<span class="d">Aucun avantage à l\'entrée</span>';
+    $('c-per-inv').innerHTML=eur(c.V)+'<span class="d">dont '+eur(c.V-st.effort)+' d\'économie d\'impôt à '+pct(st.tE)+'</span>';
+    $('c-av-brut').innerHTML=eur(c.avBrut)+'<span class="d">dont '+eur(c.avGain)+' de gains</span>';
+    $('c-per-brut').innerHTML=eur(c.perBrut)+'<span class="d">dont '+eur(c.perGain)+' de gains</span>';
+    var avDet=st.n<8?'Gains à 30 % (moins de 8 ans)':(c.avGain>(st.couple?9200:4600)?'17,2 % + 7,5 % au-delà de l\'abattement':'17,2 % de prélèvements sociaux, gains sous l\'abattement');
+    $('c-av-fisc').innerHTML=eur(-c.avTax)+'<span class="d">'+avDet+'</span>';
+    $('c-per-fisc').innerHTML=eur(-(c.perIR+c.perPFU))+'<span class="d">'+eur(c.perIR)+' d\'IR sur '+eur(c.V)+' à '+pct(tS,st.tSCustom!=null?1:0)+' · '+eur(c.perPFU)+' de PFU 31,4 % sur les gains</span>';
+    $('c-av-net').textContent=eur(c.avNet);
+    $('c-per-net').textContent=eur(c.perNet);
+
+    var ec=$('ecart');ec.textContent=signPct(c.ecart);ec.classList.toggle('neutre',c.ecart<0);
+    var diff=c.perNet-c.avNet;
+    $('ecart-eur').textContent=(diff>=0?'Soit '+eur(diff)+' de plus avec le PER':'Soit '+eur(-diff)+' de moins avec le PER')+', pour le même effort de '+eur(st.effort)+'.';
+    var mx=Math.max(c.avNet,c.perNet,1);
+    $('b-av').style.width=(c.avNet/mx*100)+'%';$('b-av').textContent=eur(c.avNet);
+    $('b-per').style.width=(c.perNet/mx*100)+'%';$('b-per').textContent=eur(c.perNet);
+
+    var s=c.seuil;
+    if(s>=0.45){$('seuil').textContent='Le PER reste devant même avec une TMI de 45 % à la retraite.';}
+    else if(s<0){$('seuil').textContent='Avec ces hypothèses, le PER ne rattrape pas l\'assurance vie, même sans impôt à la sortie.';}
+    else{$('seuil').textContent='Le PER reste devant tant que l\'impôt sur le capital à la retraite reste sous '+pct(s,1)+'.';}
+    $('seuil-aide').textContent='Avec une TMI de '+pct(st.tE)+' aujourd\'hui, '+st.n+' ans et '+pct(st.r,1)+' de rendement. Plus la TMI d\'entrée est haute, plus ce seuil monte.';
+
+    ENT.forEach(function(e,i){SOR.forEach(function(so,j){var td=$('m-'+i+'-'+j);var m=calc(st.effort,e,so,st.r,st.n,st.couple).ecart;
+      td.firstChild.textContent=signPct(m);
+      td.firstChild.setAttribute('aria-label','Entrée '+tmiLbl(e)+', sortie '+tmiLbl(so)+' : '+signPct(m));
+      td.className=(so>e?'au-dessus ':'')+(m<0?'perte ':'')+(st.tSCustom==null&&e===st.tE&&so===st.tS?'choisi':'');});});
+
+    // Retraite
+    var V=c.V,P=st.parts,R=st.rev;
+    var base=impot(R,P), tb=tmiDe(R,P);
+    $('tmi-base').textContent=pct(tb)+' ('+eur(R/P)+' par part)';
+    var i1=impot(R+V,P)-base, t1=tmiDe(R+V,P);
+    var k=st.frac, ik=k*(impot(R+V/k,P)-base), tk=tmiDe(R+V/k,P);
+    st._t1=V>0?i1/V:0; st._t2=V>0?ik/V:0;
+    $('s1-rev').textContent=eur((R+V)/P);$('s1-tmi').textContent=pct(t1);$('s1-imp').textContent=eur(i1);$('s1-taux').textContent=pct(st._t1,1);
+    $('s2-titre').textContent='Retrait sur '+k+' ans';
+    $('s2-rev').textContent=eur((R+V/k)/P);$('s2-tmi').textContent=pct(tk);$('s2-imp').textContent=eur(ik);$('s2-taux').textContent=pct(st._t2,1);
+    $('scen-1').classList.toggle('mieux',i1<=ik);$('scen-2').classList.toggle('mieux',ik<i1);
+    var gain=i1-ik;
+    $('ret-note').textContent='Part versements retirée : '+eur(V)+' (le montant investi sur le PER ci-dessus). '+(gain>1?'Fractionner sur '+k+' ans économise '+eur(gain)+' d\'impôt.':'Ici, fractionner ne change presque rien : le capital tient dans votre tranche.')+' Les gains restent taxés à 31,4 % dans les deux cas.';
+
+    // Réglette des tranches (échelle 0 → 100 000 € par part)
+    var MAX=100000,pi=$('tr-piste');
+    if(!pi.children.length){BAREME.forEach(function(b){var d=document.createElement('div');d.className='t';var w=(Math.min(b[1],MAX)-Math.min(b[0],MAX))/MAX*100;d.style.width=w+'%';d.textContent=w>6?Math.round(b[2]*100)+' %':'';pi.appendChild(d);});
+      var r1=document.createElement('div');r1.className='repere';r1.id='rep-a';pi.appendChild(r1);
+      var r2=document.createElement('div');r2.className='repere b';r2.id='rep-b';pi.appendChild(r2);
+      $('tr-axe').innerHTML='<span style="left:0">0 €</span><span style="left:29.6%">29 579 €</span><span style="left:84.6%">84 577 €</span><span style="left:100%">100 000 €</span>';}
+    $('rep-a').style.left='calc('+Math.min(R/P/MAX*100,99.5)+'% - 1px)';
+    $('rep-b').style.left='calc('+Math.min((R+V)/P/MAX*100,99.5)+'% - 1px)';
+
+    try{localStorage.setItem('sim-per',JSON.stringify({effort:st.effort,r:st.r,n:st.n,tE:st.tE,tS:st.tS,couple:st.couple,rev:st.rev,parts:st.parts,frac:st.frac}));}catch(e){}
+  }
+  render();
+})();
+</script>
+
+</body>
+</html>
